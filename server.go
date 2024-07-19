@@ -21,7 +21,7 @@ func handleConnection(conn net.Conn) {
 }
 
 func main() {
-	// log := Logger{""}
+	log := Logger{""}
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		// log.Error("Failed to bind to port 4221")

@@ -1,4 +1,4 @@
-package gonetworking
+package mylogger
 
 import (
 	"fmt"

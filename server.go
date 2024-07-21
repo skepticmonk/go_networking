@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -9,17 +10,36 @@ import (
 	logFactory "github.com/skepticmonk/gonetworking/logger"
 )
 
-func handleConnection(conn net.Conn) {
-	to := time.Now().Add(30 * time.Second)
-	conn.SetReadDeadline(to)
+func handleConnection(conn net.Conn, logger logFactory.Logger) {
+	defer conn.Close()
+	to := time.Now().Add(1 * time.Second)
+	conn.SetDeadline(to)
 	addr := conn.RemoteAddr().String()
 	fmt.Println(addr)
-	var data []byte
-	_, err := conn.Read(data)
-	conn.Write(data)
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
+	received := make([]byte, 4096)
+	println("Reading data...")
+	temp := make([]byte, 256)
+	for {
+		_, err := conn.Read(temp)
+		logger.Info("Data:", string(temp), len(temp))
+		if err != nil {
+			if err == io.EOF {
+				logger.Info("EOF")
+				break
+			}
+			logger.Info("Read data failed:", err.Error())
+			break
+		}
+		received = append(received, temp...)
 	}
+	logger.Info(string(received))
+	if len(received) > 0 {
+		_, err := conn.Write(received)
+		if err != nil {
+			logger.Error(err.Error())
+		}
+	}
+
 }
 
 func main() {
@@ -30,10 +50,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer l.Close()
-	conn, err := l.Accept()
-	if err != nil {
-		log.Error("Error accepting connection: " + err.Error())
-		os.Exit(1)
+	for {
+		log.Info("Ready to receive connection")
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		go handleConnection(c, log)
 	}
-	go handleConnection(conn)
 }
